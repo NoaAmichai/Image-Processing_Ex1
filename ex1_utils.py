@@ -41,18 +41,22 @@ def imReadAndConvert(filename: str, representation: int) -> np.ndarray:
     if img is None:
         raise ValueError(f"Error: Could not read image file {filename}")
 
-    # convert the image to grayscale if requested
+    # convert the image to GRAY_SCALE if requested
     if representation == 1:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # convert the image to RGB if requested
     elif representation == 2:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    # raise an error if the requested representation is not supported
     else:
         raise ValueError("Error: Unsupported image representation")
 
-    # normalize the intensities to the range [0,1]
-    img = img.astype(np.float64) / 255.0
+    if img.dtype == np.uint8:
+        img = img.astype(np.float64) / 255.0
+    elif img.dtype == np.float32 or img.dtype == np.float64:
+        img = img.astype(np.float64)
+    else:
+        raise TypeError("Invalid image type")
+
     return img
 
 
@@ -63,12 +67,13 @@ def imDisplay(filename: str, representation: int):
     :param representation: GRAY_SCALE or RGB
     :return: None
     """
-    # Load and convert the image using imReadAndConvert
-    img = imReadAndConvert(filename, representation)
-
-    plt.figure()
-    plt.imshow(img, cmap='gray')
-    plt.show()
+    try:
+        img = imReadAndConvert(filename, representation)
+        plt.imshow(img, cmap='gray' if representation == 1 else None)
+        plt.show()
+    except Exception as e:
+        print(f"Error: {str(e)}")
+    # plt.figure()
 
 
 def transformRGB2YIQ(imgRGB: np.ndarray) -> np.ndarray:
@@ -77,12 +82,11 @@ def transformRGB2YIQ(imgRGB: np.ndarray) -> np.ndarray:
     :param imgRGB: An Image in RGB
     :return: A YIQ in image color space
     """
-    T = np.array([[0.299, 0.587, 0.114],
-                  [0.596, -0.275, -0.321],
-                  [0.212, -0.523, 0.311]])
+    yiq_from_rgb = np.array([[0.299, 0.587, 0.114],
+                             [0.596, -0.275, -0.321],
+                             [0.212, -0.523, 0.311]])
 
-
-
+    return np.dot(imgRGB, yiq_from_rgb)
 
 
 def transformYIQ2RGB(imgYIQ: np.ndarray) -> np.ndarray:
@@ -91,14 +95,18 @@ def transformYIQ2RGB(imgYIQ: np.ndarray) -> np.ndarray:
     :param imgYIQ: An Image in YIQ
     :return: A RGB in image color space
     """
-    pass
+    rgb_from_yiq = np.array([[1.0, 0.956, 0.619],
+                             [1.0, -0.272, -0.647],
+                             [1.0, -1.106, 1.703]])
+
+    return np.dot(imgYIQ, rgb_from_yiq)
 
 
 def hsitogramEqualize(imgOrig: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray):
     """
         Equalizes the histogram of an image
         :param imgOrig: Original Histogram
-        :ret
+        :return: (imgEq,histOrg,histEQ)
     """
     pass
 
