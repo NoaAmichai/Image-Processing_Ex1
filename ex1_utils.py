@@ -86,7 +86,7 @@ def transformRGB2YIQ(imgRGB: np.ndarray) -> np.ndarray:
                              [0.596, -0.275, -0.321],
                              [0.212, -0.523, 0.311]])
 
-    return np.dot(imgRGB, yiq_from_rgb)
+    return np.dot(imgRGB, yiq_from_rgb.T)
 
 
 def transformYIQ2RGB(imgYIQ: np.ndarray) -> np.ndarray:
@@ -99,17 +99,50 @@ def transformYIQ2RGB(imgYIQ: np.ndarray) -> np.ndarray:
                              [1.0, -0.272, -0.647],
                              [1.0, -1.106, 1.703]])
 
-    return np.dot(imgYIQ, rgb_from_yiq)
+    return np.dot(imgYIQ, rgb_from_yiq.T)
 
 
-def hsitogramEqualize(imgOrig: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray):
+def hsitogramEqualize(imOrig: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray):
     """
         Equalizes the histogram of an image
         :param imgOrig: Original Histogram
         :return: (imgEq,histOrg,histEQ)
     """
-    pass
 
+    # Check if the image is grayscale or RGB
+    if len(imOrig.shape) == 2:  # Grayscale
+        img = imOrig * 255
+        # Compute histogram of grayscale image
+        histOrig, bins = np.histogram(img.flatten(), 256, [0, 255])
+    else:  # RGB
+        # Convert RGB image to YIQ color space
+        img = transformRGB2YIQ(imOrig)
+        img[:, :, 0] = img[:, :, 0] * 255
+        # Compute histogram of Y channel in YIQ image
+        histOrig, bins = np.histogram(img[:, :, 0].flatten(), 256, [0, 255])
+
+    # Compute the cumulative distribution function (cdf)
+    cdf = histOrig.cumsum()
+    # Normalize the cdf to a 0-255 scale
+    cdf = (cdf - cdf.min()) * 255 / (cdf.max() - cdf.min())
+
+    # Create a LookUpTable(LUT), such that for each intensity i, LUT[i] = CumSum[i] * 255 / allPixels
+    LUT = np.round(cdf).astype('uint8')
+
+    # Replace each intensity i with LUT[i]
+    imgEq = LUT[img.astype('uint8')]
+
+    # Compute the histogram of the equalized image
+    histEq, bins2 = np.histogram(imgEq.flatten(), 256, [0, 256])
+
+    # Normalize image values back to [0,1] range
+    if len(imOrig.shape) == 2:  # Grayscale
+        imgEq = imgEq / 255
+    else:  # RGB
+        img[:, :, 0] = imgEq[:, :, 0] / 255
+        imgEq = transformYIQ2RGB(imgEq)
+
+    return imgEq, histOrig, histEq
 
 def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarray], List[float]):
     """
