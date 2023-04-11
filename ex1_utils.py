@@ -10,7 +10,7 @@
 """
 
 from typing import List
-
+import sys
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
@@ -145,14 +145,25 @@ def hsitogramEqualize(imOrig: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray
     return imgEq, histOrig, histEq
 
 
-# Initialize boundaries
-def init_z(nQuant: int) -> np.ndarray:
-    size = int(255 / nQuant)  # The initial size given for each interval (fixed - equal division)
-    z = np.zeros(nQuant + 1, dtype=int)  # create an empty array representing the boundaries
-    for i in range(1, nQuant):
-        z[i] = z[i - 1] + size
-    z[nQuant] = 255  # always start at 0 and ends at 255
-    return z
+def error(imOrig: np.ndarray, new_img: np.ndarray) -> float:
+    all_pixels = imOrig.size
+    sub = np.subtract(new_img, imOrig)
+    pix_sum = np.sum(np.square(sub))
+    return np.sqrt(pix_sum) / all_pixels
+
+
+def case_RGB(imgOrig: np.ndarray) -> (bool, np.ndarray, np.ndarray):
+    isRGB = imgOrig.ndim == 3 and imgOrig.shape[-1] == 3
+    if isRGB:
+        imgYIQ = transformRGB2YIQ(imgOrig)
+        imgOrig = imgYIQ[..., 0]
+        return True, imgYIQ, imgOrig
+    return False, None, imgOrig
+
+
+def back_to_rgb(yiq_img: np.ndarray, y_to_update: np.ndarray) -> np.ndarray:
+    yiq_img[:, :, 0] = y_to_update
+    return transformYIQ2RGB(yiq_img)
 
 
 def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarray], List[float]):
@@ -163,22 +174,50 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarr
         :param nIter: Number of optimization loops
         :return: (List[qImage_i],List[error_i])
     """
-    if len(imOrig.shape) == 2:  # Grayscale
-        img = imOrig
-    else:  # RGB
-        yiq_image = transformRGB2YIQ(imOrig)
-        img = yiq_image[:, :, 0]
 
-    histOrg, bin = np.histogram(img, 256, [0, 255])
+    isRGB, yiq_img, imOrig = case_RGB(imOrig)
 
-    im_shape = img.shape
+    if np.amax(imOrig) <= 1:  # picture is normalize
+        imOrig = imOrig * 255
+    imOrig = imOrig.astype('uint8')
 
-    z = init_z(nQuant)  # boundaries
-    q = np.zeros(nQuant)  # the optimal values for each ‘cell’
+    histOrg, bin_edges = np.histogram(imOrig, 256, [0, 255])
+
+    z = np.arange(0, 256, int(255 / nQuant))  # boundaries
+    z[nQuant] = 255
+    q = np.zeros(nQuant)
 
     qImage_list = list()
     error_list = list()
 
-    # for i in range (0,nIter):
+    for i in range(nIter):
+        new_img = np.zeros(imOrig.shape)
 
-    pass
+        for cell in range(len(q)):
+            # Determine the range of pixel intensities for this cell
+            left = z[cell]
+            right = z[cell + 1] if cell < len(q) - 1 else 256
+            cell_range = np.arange(left, right)
+
+            # Compute the average intensity for this cell, weighted by the pixel counts in its range
+            hist_cell = histOrg[left:right]
+            weights = hist_cell / np.sum(hist_cell)
+            q[cell] = np.sum(weights * cell_range)
+
+            # Assign the average intensity to all pixels within the cell's range
+            condition = np.logical_and(imOrig >= left, imOrig < right)
+            new_img[condition] = q[cell]
+
+        MSE = error(imOrig / 255, new_img / 255)
+        error_list.append(MSE)
+        if isRGB:
+            new_img = back_to_rgb(yiq_img, new_img / 255)
+
+        qImage_list.append(new_img)
+        z[1:-1] = (q[:-1] + q[1:]) / 2
+        if len(error_list) >= 2 and abs(error_list[-1] - error_list[-2]) <= sys.float_info.epsilon:  # check if converge
+            break
+
+    plt.plot(error_list)
+    plt.show()
+    return qImage_list, error_list
