@@ -1,3 +1,9 @@
+#  Image Processing Exercise 1
+
+## Python Version and Platform
+
+This program has been tested on Python 3.10.11 on a Windows 10 machine.
+
 myID() - Returns the ID of the user (hardcoded).
 
 imReadAndConvert(filename: str, representation: int) -> np.ndarray -
