@@ -14,6 +14,7 @@ import sys
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+from sklearn.metrics import mean_squared_error
 
 LOAD_GRAY_SCALE = 1
 LOAD_RGB = 2
@@ -145,13 +146,6 @@ def hsitogramEqualize(imOrig: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray
     return imgEq, histOrig, histEq
 
 
-def error(imOrig: np.ndarray, new_img: np.ndarray) -> float:
-    all_pixels = imOrig.size
-    sub = np.subtract(new_img, imOrig)
-    pix_sum = np.sum(np.square(sub))
-    return np.sqrt(pix_sum) / all_pixels
-
-
 def case_RGB(imgOrig: np.ndarray) -> (bool, np.ndarray, np.ndarray):
     isRGB = imgOrig.ndim == 3 and imgOrig.shape[-1] == 3
     if isRGB:
@@ -208,8 +202,9 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarr
             condition = np.logical_and(imOrig >= left, imOrig < right)
             new_img[condition] = q[cell]
 
-        MSE = error(imOrig / 255, new_img / 255)
+        MSE = mean_squared_error(imOrig / 255, new_img / 255)
         error_list.append(MSE)
+
         if isRGB:
             new_img = back_to_rgb(yiq_img, new_img / 255)
 
@@ -218,6 +213,4 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarr
         if len(error_list) >= 2 and abs(error_list[-1] - error_list[-2]) <= sys.float_info.epsilon:  # check if converge
             break
 
-    plt.plot(error_list)
-    plt.show()
     return qImage_list, error_list

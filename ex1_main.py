@@ -49,7 +49,7 @@ def main():
     print("ID:", myID())
     img_path = 'beach.jpg'
 
-    # # Basic read and display
+    # Basic read and display
     # imDisplay(img_path, LOAD_GRAY_SCALE)
     # imDisplay(img_path, LOAD_RGB)
     #
@@ -66,16 +66,16 @@ def main():
     # ax[0].imshow(yiq_img)
     # ax[1].imshow(yiq_img1)
     # plt.show()
-
-    # Image histEq
+    #
+    # # Image histEq
     # histEqDemo(img_path, LOAD_GRAY_SCALE)
     # histEqDemo(img_path, LOAD_RGB)
 
     # Image Quantization
     quantDemo(img_path, LOAD_GRAY_SCALE)
-    quantDemo(img_path, LOAD_RGB)
+    # quantDemo(img_path, LOAD_RGB)
 
-    # # Gamma
+    # Gamma
     # gammaDisplay(img_path, LOAD_GRAY_SCALE)
 
 

@@ -52,13 +52,3 @@ def gammaDisplay(img_path: str, rep: int):
     # Wait for a key press and close the window when a key is pressed
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-
-
-def main():
-    gammaDisplay('bac_con.png', LOAD_GRAY_SCALE)
-    gammaDisplay('beach.jpg', LOAD_GRAY_SCALE)
-    gammaDisplay('dark.jpg', LOAD_GRAY_SCALE)
-
-
-if __name__ == '__main__':
-    main()
